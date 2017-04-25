@@ -113,12 +113,7 @@ function ReportError( $ex ) {
 
 function GetSettings() {
 
-    $settings = [xml]@"
-<settings>
-    <ordersDatabase server="SERVER\INSTANCE,PORT" database="DATABASE" />
-    <ftp server="" userid="" password="" />
-</settings>
-"@
+    [xml]$settings = Get-Content "settings.xml"
 
     return $settings.settings
 }
