@@ -29,6 +29,12 @@ function SendOrders( $settings ) {
     Method for reading a single XML blob returned from a FOR XML query (or one embedded in a stored proc.)
     Use this instead of ExecuteScalar as ExecuteScalar will truncate XML at 2,033 characters.
     See: https://support.microsoft.com/en-us/help/310378/
+
+    TODO: Replace server, database, etc. with a connection string.
+
+    @param $server - the database server to connect to.
+    @param $database - the database instance
+    @param $query - the query (or stored procedure) to execute
 #>
 function ExecuteScalarXml( $server, $database, $query ) {
 
@@ -58,6 +64,13 @@ function ExecuteScalarXml( $server, $database, $query ) {
 }
 
 
+<#
+    TODO: Replace server, database, etc. with a connection string.
+
+    @param $server - the database server to connect to.
+    @param $database - the database instance
+    @param $query - the query (or stored procedure) to execute
+#>
 function ExecuteDataTable( $server, $database, $query ) {
     Write-Host "  server: " $server
     Write-Host "database: " $database
@@ -103,6 +116,7 @@ function GetSettings() {
     $settings = [xml]@"
 <settings>
     <ordersDatabase server="SERVER\INSTANCE,PORT" database="DATABASE" />
+    <ftp server="" userid="" password="" />
 </settings>
 "@
 
