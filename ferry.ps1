@@ -13,16 +13,46 @@ function Main() {
 function SendOrders( $settings ) {
     Write-Host "Doing some stuff"
     
-    $table = ExecuteDataTable $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
+    $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
 
-    Write-Host $table.GetType().Name
+    Write-Host $orderData
 
-    Write-Host "Column Count: " $table.Columns[0].ColumnName
+}
 
-    $table | foreach {
-        Write-Host $_.GetType().Name
-        Write-Host "row " $_[0].length
+
+<#
+    Method for reading a single XML blob returned from a FOR XML query (or one embedded in a stored proc.)
+    Use this instead of ExecuteScalar as ExecuteScalar will truncate XML at 2,033 characters.
+    See: https://support.microsoft.com/en-us/help/310378/
+#>
+function ExecuteScalarXml( $server, $database, $query ) {
+    Write-Host "  server: " $server
+    Write-Host "database: " $database
+    Write-Host "   query: " $query
+
+    $connectionString = "Data Source=$server;" +
+        "Integrated Security=true; " +
+        "Initial Catalog=$database"
+    Write-Host "connection string:" $connectionString
+
+    $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
+    $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
+    $connection.Open()
+
+    # Powershell 2 doesn't have a using statement, so we do it by hand.
+    $xmlBlob = ''
+    $xmlReader = $command.ExecuteXmlReader();
+    try {
+        while( $xmlReader.Read() ) {
+            $xmlBlob = $xmlReader.ReadOuterXml()
+        }
     }
+    finally {
+        $xmlReader.Close()
+        $connection.Close()
+    }
+
+    return $xmlBlob
 }
 
 
