@@ -6,7 +6,7 @@ function Main() {
         SendOrders $settings
     }
     catch [System.Exception] {
-        ReportError $_
+        ReportError "Send Orders" $_ $settings
     }
 }
 
@@ -41,7 +41,6 @@ function ExecuteScalarXml( $server, $database, $query ) {
     $connectionString = "Data Source=$server;" +
         "Integrated Security=true; " +
         "Initial Catalog=$database"
-    Write-Host "connection string:" $connectionString
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
     $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
@@ -72,10 +71,6 @@ function ExecuteScalarXml( $server, $database, $query ) {
     @param $query - the query (or stored procedure) to execute
 #>
 function ExecuteDataTable( $server, $database, $query ) {
-    Write-Host "  server: " $server
-    Write-Host "database: " $database
-    Write-Host "   query: " $query
-
     $connectionString = "Data Source=$server;" +
         "Integrated Security=true; " +
         "Initial Catalog=$database"
@@ -118,9 +113,27 @@ function GetExportFileName( $testFile ) {
 }
 
 
-function ReportError( $ex ) {
-    Write-Host -foregroundcolor 'red' $ex "at line:" $ex.Exception.Line
-    Write-Host -foregroundcolor 'red' "Real error handling goes here"
+<#
+    Report errors in the import/export processing flow.
+
+    @param $stage - String containing the name of the processing stage that failed.
+    @param $ex - An ErrorRecord object containing details of the error which failed.
+#>
+function ReportError( $stage, $ex, $settings ) {
+
+    $message = $ex.ToString()
+    $explanationMessage = "Error occured in the '$stage' stage.`n$ex"
+
+    Write-Host -foregroundcolor 'red' $explanationMessage
+
+    if( $settings.errorReporting -and $settings.email) {
+        send-mailmessage `
+            -SmtpServer $settings.email.server `
+            -From $settings.errorReporting.from `
+            -To $settings.errorReporting.to `
+            -Subject $settings.errorReporting.subjectLine `
+            -BODY $explanationMessage
+    }
 }
 
 function GetSettings() {

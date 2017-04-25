@@ -1,4 +1,6 @@
-<settings>
+<settings testmode="1">
     <ordersDatabase server="SERVER\INSTANCE,PORT" database="DATABASE" />
     <ftp server="" userid="" password="" />
+    <email server="MAILSERVER" />
+    <errorReporting from="EMAIL_ADDRESS" to="EMAIL_ADDRESS" subjectLine="Error Report" />
 </settings>
