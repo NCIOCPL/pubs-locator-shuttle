@@ -14,7 +14,7 @@ function SendOrders( $settings ) {
     Write-Host "Doing some stuff"
     
     $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
-    $exportFilename = GetExportFileName
+    $exportFilename = GetExportFileName $settings.testmode
     $orderData | Out-File $exportFilename
 
     # Clean up
@@ -101,10 +101,19 @@ function ExecuteDataTable( $server, $database, $query ) {
     Creates a timestamp-based filename with a fully-resolved path to the user's
     temporary path.  For exact location rules, see the remarks in
     https://msdn.microsoft.com/en-us/library/system.io.path.gettemppath(v=vs.110).aspx
+
+    @param $testFile - If set to any value other than '0' or NULL, the filename will be prepended with the string "TEST-"
 #>
-function GetExportFileName() {
+function GetExportFileName( $testFile ) {
+
+    if( -not $testFile -or ($testFile -eq '0') -or ($testFile -eq 0)) {
+        $formatter = "yyyyMMdd-HHmmss"
+    } else {
+        $formatter = "TEST-yyyyMMdd-HHmmss"
+    }
+
     $path = [System.IO.Path]::GetTempPath()
-    $filename = [System.DateTime]::Now.ToString("yyyyMMdd-HHmmss") + ".xml"
+    $filename = [System.DateTime]::Now.ToString($formatter) + ".xml"
     return [System.IO.Path]::Combine( $path,  $filename )
 }
 
