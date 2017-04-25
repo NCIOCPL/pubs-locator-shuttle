@@ -5,7 +5,7 @@ function Main() {
         $settings = GetSettings
         SendOrders $settings
     }
-    catch {
+    catch [System.Exception] {
         ReportError $_
     }
 }
@@ -14,14 +14,14 @@ function SendOrders( $settings ) {
     Write-Host "Doing some stuff"
     
     $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
-    $filename = CreateTemporaryFile
-    $orderData | Out-File $filename
+    $exportFilename = GetExportFileName
+    $orderData | Out-File $exportFilename
 
     # Clean up
-    Remove-Item $filename
+    Remove-Item $exportFilename
 
     Write-Host $orderData
-    Write-Host $filename
+    Write-Host $exportFilename
 }
 
 
@@ -97,17 +97,20 @@ function ExecuteDataTable( $server, $database, $query ) {
     return ,$dataTable
 }
 
-
-function CreateTemporaryFile() {
+<#
+    Creates a timestamp-based filename with a fully-resolved path to the user's
+    temporary path.  For exact location rules, see the remarks in
+    https://msdn.microsoft.com/en-us/library/system.io.path.gettemppath(v=vs.110).aspx
+#>
+function GetExportFileName() {
     $path = [System.IO.Path]::GetTempPath()
-    $filename = [System.Guid]::NewGuid().ToString() + ".xml"
+    $filename = [System.DateTime]::Now.ToString("yyyyMMdd-HHmmss") + ".xml"
     return [System.IO.Path]::Combine( $path,  $filename )
 }
 
 
 function ReportError( $ex ) {
-    Write-Host -foregroundcolor 'red' "I fall down and go boom!"
-    Write-Host -foregroundcolor 'red' $ex
+    Write-Host -foregroundcolor 'red' $ex "at line:" $ex.Exception.Line
     Write-Host -foregroundcolor 'red' "Real error handling goes here"
 }
 
