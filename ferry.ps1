@@ -14,9 +14,14 @@ function SendOrders( $settings ) {
     Write-Host "Doing some stuff"
     
     $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
+    $filename = CreateTemporaryFile
+    $orderData | Out-File $filename
+
+    # Clean up
+    Remove-Item $filename
 
     Write-Host $orderData
-
+    Write-Host $filename
 }
 
 
@@ -26,9 +31,6 @@ function SendOrders( $settings ) {
     See: https://support.microsoft.com/en-us/help/310378/
 #>
 function ExecuteScalarXml( $server, $database, $query ) {
-    Write-Host "  server: " $server
-    Write-Host "database: " $database
-    Write-Host "   query: " $query
 
     $connectionString = "Data Source=$server;" +
         "Integrated Security=true; " +
@@ -80,6 +82,13 @@ function ExecuteDataTable( $server, $database, $query ) {
     # By using the comma operator, we create an array which causes the DataTable to be returned
     # to the caller, with all its built-in properties intact.
     return ,$dataTable
+}
+
+
+function CreateTemporaryFile() {
+    $path = [System.IO.Path]::GetTempPath()
+    $filename = [System.Guid]::NewGuid().ToString() + ".xml"
+    return [System.IO.Path]::Combine( $path,  $filename )
 }
 
 
