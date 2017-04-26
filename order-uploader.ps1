@@ -1,4 +1,7 @@
-
+<#
+    Retrieves publication orders from the publications locator and uploads them to the  
+    Government Printing Office FTP server.
+#>
 
 function Main() {
     try {
