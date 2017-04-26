@@ -3,7 +3,7 @@ Scripts to transfer data between the publications locator and the Government Pri
 
 ## Prerequisites
 
-* **Putty** (specifically, _psftp_) must be installed, and available on the path.
+* **[Putty](http://www.chiark.greenend.org.uk/~sgtatham/putty/)** (specifically, _psftp_) must be installed, and available on the path.
 * **pstftp** must have been run manually at least once and the remote server's ssh fingerprint accepted.
 
 ## order-uploader
