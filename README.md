@@ -41,7 +41,25 @@ Both scripts use the same configuration dta, an XML file named settings.xml
         @password - credentials for logging in to @server.
     -->
     <ftp server="" userid="" password="" />
+
+    <!--
+        Email server
+
+        @server - fully qualifified host name of the email server.
+    -->
     <email server="MAILSERVER" />
+
+    <!--
+        Information to use when emailing an error report.
+
+        @from - the address error reports will be seen as coming from. Should be in the form of
+                user@domain.gov.
+
+        @to - email address of the error report recipient (i.e. Who does it go to). Should be in the form of
+              user@domain.gov.
+
+        @subjectLine - the error report email's subject line.
+    -->
     <errorReporting from="EMAIL_ADDRESS" to="EMAIL_ADDRESS" subjectLine="Error Report" />
 </settings>
 ```
