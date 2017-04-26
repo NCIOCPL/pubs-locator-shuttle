@@ -85,7 +85,7 @@ function GetExportFileName( $testFile ) {
     if( -not $testFile -or ($testFile -eq '0') -or ($testFile -eq 0)) {
         $formatter = "yyyyMMdd-HHmmss"
     } else {
-        $formatter = "TEST-NCI-yyyyMMdd-HHmmss"
+        $formatter = "NCI-TEST-yyyyMMdd-HHmmss"
     }
 
     $path = [System.IO.Path]::GetTempPath()
