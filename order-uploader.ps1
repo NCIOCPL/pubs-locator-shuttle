@@ -16,12 +16,22 @@ function SendOrders( $settings ) {
     $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
     $exportFilename = GetExportFileName $settings.testmode
     $orderData | Out-File $exportFilename
+    DoSftp $exportFilename $settings
 
     # Clean up
     Remove-Item $exportFilename
 
     Write-Host $orderData
     Write-Host $exportFilename
+}
+
+function DoSftp( $exportFilename, $settings ) {
+    $server = $settings.ftp.server
+    $userid = $settings.ftp.userid
+    $password = $settings.ftp.password
+
+    cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
+    exit    
 }
 
 
@@ -64,35 +74,6 @@ function ExecuteScalarXml( $server, $database, $query ) {
 
 
 <#
-    TODO: Replace server, database, etc. with a connection string.
-
-    @param $server - the database server to connect to.
-    @param $database - the database instance
-    @param $query - the query (or stored procedure) to execute
-#>
-function ExecuteDataTable( $server, $database, $query ) {
-    $connectionString = "Data Source=$server;" +
-        "Integrated Security=true; " +
-        "Initial Catalog=$database"
-    Write-Host "connection string:" $connectionString
-
-    $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
-    $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
-    $connection.Open()
-
-    $adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
-    $dataTable = New-Object System.Data.DataTable
-    $adapter.Fill($dataTable) | Out-Null
-
-    $connection.Close()
-
-    # Powershell wants to unwind System.Data.DataTable into an array of DataRow objects.
-    # By using the comma operator, we create an array which causes the DataTable to be returned
-    # to the caller, with all its built-in properties intact.
-    return ,$dataTable
-}
-
-<#
     Creates a timestamp-based filename with a fully-resolved path to the user's
     temporary path.  For exact location rules, see the remarks in
     https://msdn.microsoft.com/en-us/library/system.io.path.gettemppath(v=vs.110).aspx
@@ -104,7 +85,7 @@ function GetExportFileName( $testFile ) {
     if( -not $testFile -or ($testFile -eq '0') -or ($testFile -eq 0)) {
         $formatter = "yyyyMMdd-HHmmss"
     } else {
-        $formatter = "TEST-yyyyMMdd-HHmmss"
+        $formatter = "TEST-NCI-yyyyMMdd-HHmmss"
     }
 
     $path = [System.IO.Path]::GetTempPath()
