@@ -5,19 +5,27 @@
 
 function Main() {
     try {
-
         $settings = GetSettings
-        $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
-        $exportFilename = GetExportFileName $settings.testmode
-        $orderData | Out-File $exportFilename
-        DoSftp $exportFilename $settings
-
-        # Clean up
-        Remove-Item $exportFilename
+        DownloadReports $settings
     }
     catch [System.Exception] {
-        ReportError "Send Orders" $_ $settings
+        ReportError "Download Reports" $_ $settings
     }
+}
+
+function DownloadReports( $settings ) {
+    Write-Host "Doing some stuff"
+    
+    $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
+    $exportFilename = GetExportFileName $settings.testmode
+    $orderData | Out-File $exportFilename
+    DoSftp $exportFilename $settings
+
+    # Clean up
+    Remove-Item $exportFilename
+
+    Write-Host $orderData
+    Write-Host $exportFilename
 }
 
 function DoSftp( $exportFilename, $settings ) {
@@ -26,6 +34,7 @@ function DoSftp( $exportFilename, $settings ) {
     $password = $settings.ftp.password
 
     cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
+    exit    
 }
 
 
