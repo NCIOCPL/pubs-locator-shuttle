@@ -7,7 +7,7 @@ function Main() {
     try {
 
         $settings = GetSettings
-        $orderData = ExecuteScalarXml $settings.ordersDatabase.connectionString "dbo.GPO_orderXML_download"
+        $orderData = RetrieveOrderData $settings
         $exportFilename = GetExportFileName $settings.testmode
         $orderData | Out-File $exportFilename
         DoSftp $exportFilename $settings
@@ -20,12 +20,19 @@ function Main() {
     }
 }
 
+
 function DoSftp( $exportFilename, $settings ) {
     $server = $settings.ftp.server
     $userid = $settings.ftp.userid
     $password = $settings.ftp.password
 
     cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
+}
+
+
+function RetrieveOrderData($settings) {
+    # TODO Add parameter viewOnly, set to 0
+    return ExecuteScalarXml $settings.ordersDatabase.connectionString "dbo.GPO_orderXML_download"
 }
 
 
