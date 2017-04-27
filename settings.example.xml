@@ -5,11 +5,12 @@
                 a testing mode.
  -->
 <settings testmode="1">
+
     <!--
         @connectionString - Contains the connection string with credentials for logging in
                             to the pubs locator's database.
     -->
-    <ordersDatabase server="SERVER\INSTANCE,PORT" database="DATABASE" />
+    <ordersDatabase connectionString="Data Source=MY_SERVER\INSTANCE,PORT; Initial Catalog=MY_DATABASE; Integrated Security=true;" />
 
     <!--
         Credentials for logging in to the GPO's SFTP server.

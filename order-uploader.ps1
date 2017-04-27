@@ -7,7 +7,7 @@ function Main() {
     try {
 
         $settings = GetSettings
-        $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
+        $orderData = ExecuteScalarXml $settings.ordersDatabase.connectionString "dbo.GPO_orderXML_download"
         $exportFilename = GetExportFileName $settings.testmode
         $orderData | Out-File $exportFilename
         DoSftp $exportFilename $settings
@@ -34,17 +34,11 @@ function DoSftp( $exportFilename, $settings ) {
     Use this instead of ExecuteScalar as ExecuteScalar will truncate XML at 2,033 characters.
     See: https://support.microsoft.com/en-us/help/310378/
 
-    TODO: Replace server, database, etc. with a connection string.
-
-    @param $server - the database server to connect to.
-    @param $database - the database instance
-    @param $query - the query (or stored procedure) to execute
+    @param $connectionString - ADO.Net connection string for connecting to the database server.
+    e.g. A connectionString value using Windows authention might look something like
+         "Data Source=MY_SERVER\INSTANCE,PORT; Initial Catalog=MY_DATABASE; Integrated Security=true;"
 #>
-function ExecuteScalarXml( $server, $database, $query ) {
-
-    $connectionString = "Data Source=$server;" +
-        "Integrated Security=true; " +
-        "Initial Catalog=$database"
+function ExecuteScalarXml( $connectionString, $query ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
     $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
