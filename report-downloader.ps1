@@ -6,8 +6,8 @@
 # Data structure for managing the set of reports to be retrieved.
 $reports = [xml]@"
     <reports>
-        <report name="Inventory"    remoteFilename="" localFilename="" storageProcedure="" />
-        <report name="Fullfillment" remoteFilename="" localFilename="" storageProcedure="" />
+        <report name="Inventory"              remoteFilename="" localFilename="" storageProcedure="GPO_inventory_import" />
+        <report name="NCIOrderFulfillmentRpt" remoteFilename="" localFilename="" storageProcedure="GPO_shipping_import" />
     </reports>
 "@
 
@@ -26,13 +26,6 @@ function Main() {
 
         # Save reports to database.
         SaveReports $reportList $settings.ordersDatabase
-
-
-        #$exportFilename = GetExportFileName $settings.testmode
-        #$orderData | Out-File $exportFilename
-
-        # Clean up
-        #Remove-Item $exportFilename
     }
     catch [System.Exception] {
         ReportError  "Downloading reports" $_ $settings
@@ -54,10 +47,10 @@ function DownloadReports( $reportList, $server, $userid, $password ) {
     # TODO: Download the individual files.
     # TODO: Determine local file names.
     $reportList | ForEach-Object {
-        Write-Host "Download:" $_.name
+        Write-Host "Downloading:" $_.name
 
         # This is (probably) only temporary
-        $_.localFilename = $_.name + ".xml"
+        $_.localFilename = [System.IO.Path]::Combine("data", $_.name + ".xml")
     }
 
     #cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
@@ -70,46 +63,39 @@ function DownloadReports( $reportList, $server, $userid, $password ) {
 #>
 function SaveReports($reportList, $databaseInfo) {
 
-    $reportList | ForEach-Object { Write-Host $_.localFilename }
+    $reportList | ForEach-Object {
+        Write-Host -foregroundcolor 'green' "Saving" $_.localFilename
+        $data = Get-Content $_.localFilename
+
+        $xmlParam = new-object system.data.SqlClient.SqlParameter("xml", $data)
+        $paramList = ,$xmlParam
+        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure $paramList
+    }
 
 }
 
-
 <#
-    Method for reading a single XML blob returned from a FOR XML query (or one embedded in a stored proc.)
-    Use this instead of ExecuteScalar as ExecuteScalar will truncate XML at 2,033 characters.
-    See: https://support.microsoft.com/en-us/help/310378/
-
-    TODO: Replace server, database, etc. with a connection string.
-
-    @param $server - the database server to connect to.
-    @param $database - the database instance
-    @param $query - the query (or stored procedure) to execute
+    Execute a SQL Query which doesn't return anything.
 #>
-function ExecuteScalarXml( $server, $database, $query ) {
-
-    $connectionString = "Data Source=$server;" +
-        "Integrated Security=true; " +
-        "Initial Catalog=$database"
+function ExecuteNonQuery( $connectionString, $query, $params ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
     $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
-    $connection.Open()
 
+    # Attach the paramters to the command object.
+    $params | ForEach-Object {
+        $command.Parameters.Add( [system.data.SqlClient.SqlParameter]$_ )
+    }
+
+    $connection.Open()
+ 
     # Powershell 2 doesn't have a using statement, so we do it by hand.
-    $xmlBlob = ''
-    $xmlReader = $command.ExecuteXmlReader();
     try {
-        while( $xmlReader.Read() ) {
-            $xmlBlob = $xmlReader.ReadOuterXml()
-        }
+        #$command.ExecuteNonQuery()
     }
     finally {
-        $xmlReader.Close()
         $connection.Close()
     }
-
-    return $xmlBlob
 }
 
 

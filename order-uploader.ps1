@@ -53,8 +53,8 @@ function ExecuteScalarXml( $connectionString, $query ) {
 
     # Powershell 2 doesn't have a using statement, so we do it by hand.
     $xmlBlob = ''
-    $xmlReader = $command.ExecuteXmlReader();
     try {
+        $xmlReader = $command.ExecuteXmlReader();
         while( $xmlReader.Read() ) {
             $xmlBlob = $xmlReader.ReadOuterXml()
         }
