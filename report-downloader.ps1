@@ -1,40 +1,77 @@
 <#
-    Retrieves publication orders from the publications locator and uploads them to the  
-    Government Printing Office FTP server.
+    Retrieves reports from the Government Printing Office FTP server and stores them
+    in the pubs locator database for processing.
 #>
+
+# Data structure for managing the set of reports to be retrieved.
+$reports = [xml]@"
+    <reports>
+        <report name="Inventory"    remoteFilename="" localFilename="" storageProcedure="" />
+        <report name="Fullfillment" remoteFilename="" localFilename="" storageProcedure="" />
+    </reports>
+"@
+
 
 function Main() {
     try {
+
         $settings = GetSettings
-        DownloadReports $settings
+
+        # Contains an enumerable collection of report data structures.  This is more useful
+        # than the underlaying XML document structure.
+        $reportList = $reports.reports.report
+
+        # Download the rpeorts
+        DownloadReports $reportList $settings.ftp.server $settings.ftp.userid $settings.ftp.password
+
+        # Save reports to database.
+        SaveReports $reportList $settings.ordersDatabase
+
+
+        #$exportFilename = GetExportFileName $settings.testmode
+        #$orderData | Out-File $exportFilename
+
+        # Clean up
+        #Remove-Item $exportFilename
     }
     catch [System.Exception] {
-        ReportError "Download Reports" $_ $settings
+        ReportError  "Downloading reports" $_ $settings
     }
 }
 
-function DownloadReports( $settings ) {
-    Write-Host "Doing some stuff"
-    
-    $orderData = ExecuteScalarXml $settings.ordersDatabase.server $settings.ordersDatabase.database "dbo.GPO_orderXML_download"
-    $exportFilename = GetExportFileName $settings.testmode
-    $orderData | Out-File $exportFilename
-    DoSftp $exportFilename $settings
+<#
+    Connects to the GPO SFTP server and downloads the reports identified by $reportList.
 
-    # Clean up
-    Remove-Item $exportFilename
+    The reportList structure is updated to include the indvidual report's filenames and paths
+    on the local file system.
+#>
+function DownloadReports( $reportList, $server, $userid, $password ) {
+    $server = $server
+    $userid = $userid
+    $password = $password
 
-    Write-Host $orderData
-    Write-Host $exportFilename
+    # TODO: Determine remote file names.
+    # TODO: Download the individual files.
+    # TODO: Determine local file names.
+    $reportList | ForEach-Object {
+        Write-Host "Download:" $_.name
+
+        # This is (probably) only temporary
+        $_.localFilename = $_.name + ".xml"
+    }
+
+    #cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
 }
 
-function DoSftp( $exportFilename, $settings ) {
-    $server = $settings.ftp.server
-    $userid = $settings.ftp.userid
-    $password = $settings.ftp.password
 
-    cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
-    exit    
+<#
+    Loads report files identified in the localFilename element of each entry in $reportList
+    and saves it in the database.
+#>
+function SaveReports($reportList, $databaseInfo) {
+
+    $reportList | ForEach-Object { Write-Host $_.localFilename }
+
 }
 
 
@@ -106,7 +143,9 @@ function GetExportFileName( $testFile ) {
 function ReportError( $stage, $ex, $settings ) {
 
     $message = $ex.ToString()
-    $explanationMessage = "Error occured in the '$stage' stage.`n$ex"
+    $explanationMessage = "Error occured in the '$stage' stage.`n$ex`nError at line: " +
+            $ex.InvocationInfo.ScriptLineNumber + "`n" +
+            $ex.InvocationInfo.line
 
     Write-Host -foregroundcolor 'red' $explanationMessage
 
