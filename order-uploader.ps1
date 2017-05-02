@@ -9,7 +9,7 @@ function Main() {
         $settings = GetSettings
         $orderData = RetrieveOrderData $settings
         $exportFilename = GetExportFileName $settings.testmode
-        $orderData | Out-File $exportFilename
+        $orderData | Out-File $exportFilename -Encoding UTF8
         DoSftp $exportFilename $settings
 
         # Clean up
