@@ -13,6 +13,18 @@ GPO FTP server.
 ## report-downloader
 Retrieves reports from the GPO FTP server and stores them in the publications locator.
 
+| Report File Name   | Description |
+| ------------------ | ----------- |
+| InventoryReport    | Inventory of the number of each type of report available at GPO. |
+| FullFillmentReport | Order fulfillment status |
+
+File names for download from the GPO SFTP server follow the format of
+
+    <report_name>-yyyyMMDdd.xml
+
+e.g. InventoryReport-20170503.xml would be the Inventory report for May 3, 2017
+
+
 ## Configuration
 
 Both scripts use the same configuration dta, an XML file named settings.xml
