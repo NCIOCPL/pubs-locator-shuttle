@@ -9,11 +9,16 @@ function Main() {
         $settings = GetSettings
         $orderData = RetrieveOrderData $settings
         $exportFilename = GetExportFileName $settings.testmode
-        $orderData | Out-File $exportFilename -Encoding UTF8
-        DoSftp $exportFilename $settings
 
-        # Clean up
-        Remove-Item $exportFilename
+        try {
+            $orderData | Out-File $exportFilename -Encoding UTF8
+            DoSftp $exportFilename $settings
+        }
+        finally {
+            # Finally block to guarantee that clean up always takes place.
+            Remove-Item $exportFilename
+        }
+
     }
     catch [System.Exception] {
         ReportError "Send Orders" $_ $settings
