@@ -69,9 +69,11 @@ function SaveReports($reportList, $databaseInfo) {
 
         $xmlParam = new-object system.data.SqlClient.SqlParameter( "@xml", [system.data.SqlDbType]::Text )
         $xmlParam.value = $data
-
         $paramList = ,$xmlParam
-        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure "StoredProcedure" $paramList
+
+        # ExecuteNonQuery returns  the number of rows affected, or -1 if a stored proc sets nocount on.
+        # Neither of those is useful for this script, so we discard it.
+        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure "StoredProcedure" $paramList | Out-Null
     }
 
 }
@@ -93,15 +95,13 @@ function ExecuteNonQuery( $connectionString, $query, $commandType, $params ) {
     $connection.Open()
     # Powershell 2 doesn't have a using statement, so we do it by hand.
     try {
-        $rc = $command.ExecuteNonQuery()
-        if( $rc -lt 0 )
-        {
-            Write-Host "An error occured executing '$query', return code: '$rc'"
-        }
+        $rowsAffected = $command.ExecuteNonQuery()
     }
     finally {
         $connection.Close()
     }
+
+    return $rowsAffected
 }
 
 
