@@ -65,11 +65,13 @@ function SaveReports($reportList, $databaseInfo) {
 
     $reportList | ForEach-Object {
         Write-Host -foregroundcolor 'green' "Saving" $_.localFilename
-        $data = Get-Content $_.localFilename
+        $data = LoadDataFile $_.localFilename
 
-        $xmlParam = new-object system.data.SqlClient.SqlParameter("xml", $data)
+        $xmlParam = new-object system.data.SqlClient.SqlParameter( "@xml", [system.data.SqlDbType]::Text )
+        $xmlParam.value = $data
+
         $paramList = ,$xmlParam
-        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure $paramList
+        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure "StoredProcedure" $paramList
     }
 
 }
@@ -77,25 +79,43 @@ function SaveReports($reportList, $databaseInfo) {
 <#
     Execute a SQL Query which doesn't return anything.
 #>
-function ExecuteNonQuery( $connectionString, $query, $params ) {
+function ExecuteNonQuery( $connectionString, $query, $commandType, $params ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
-    $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
+    $command = new-object system.data.sqlclient.sqlcommand("[$query]", $connection)
+    $command.CommandType = $commandType
 
     # Attach the paramters to the command object.
     $params | ForEach-Object {
-        $command.Parameters.Add( [system.data.SqlClient.SqlParameter]$_ )
+        $command.Parameters.Add( $_ ) | Out-Null
     }
 
     $connection.Open()
- 
     # Powershell 2 doesn't have a using statement, so we do it by hand.
     try {
-        #$command.ExecuteNonQuery()
+        $rc = $command.ExecuteNonQuery()
+        if( $rc -lt 0 )
+        {
+            Write-Host "An error occured executing '$query', return code: '$rc'"
+        }
     }
     finally {
         $connection.Close()
     }
+}
+
+
+<#
+    Returns the content of the named text file
+
+    $filename - Name and path of a text file to retrieve.
+#>
+function LoadDataFile( $filename ) {
+
+    $data = Get-Content $filename
+
+    # Get-Content returns an array of strings.  We need to convert them to one big string with no-delimiters
+    return [String]::Join('', $data)
 }
 
 
