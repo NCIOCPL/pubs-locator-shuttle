@@ -20,8 +20,10 @@
         @userid - credentials for logging in to @server.
 
         @password - credentials for logging in to @server.
+
+        @downloadPath - path to download from. If not specified, / is assumed.
     -->
-    <ftp server="" userid="" password="" />
+    <ftp server="" userid="" password="" downloadPath="" />
 
     <!--
         Email server

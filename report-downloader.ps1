@@ -6,8 +6,8 @@
 # Data structure for managing the set of reports to be retrieved.
 $reports = [xml]@"
     <reports>
-        <report name="Inventory"              remoteFilename="" localFilename="" storageProcedure="GPO_inventory_import" />
-        <report name="NCIOrderFulfillmentRpt" remoteFilename="" localFilename="" storageProcedure="GPO_shipping_import" />
+        <report name="Inventory"   remoteFilename="InventoryReport"   storageProcedure="GPO_inventory_import" />
+        <report name="Fulfillment" remoteFilename="FulfillmentReport" storageProcedure="GPO_shipping_import" />
     </reports>
 "@
 
@@ -21,11 +21,16 @@ function Main() {
         # than the underlaying XML document structure.
         $reportList = $reports.reports.report
 
-        # Download the rpeorts
-        DownloadReports $reportList $settings.ftp.server $settings.ftp.userid $settings.ftp.password
+        $reportList | ForEach-Object {
 
-        # Save reports to database.
-        SaveReports $reportList $settings.ordersDatabase
+            # Get the report
+            Write-Host "Downloading for" $_.name "report"
+            $data = GetReportData $_.remoteFilename $settings.ftp.server $settings.ftp.userid $settings.ftp.password $settings.ftp.downloadPath
+
+
+#            # Save reports to database.
+#            SaveReports $reportList $settings.ordersDatabase
+        }
     }
     catch [System.Exception] {
         ReportError  "Downloading reports" $_ $settings
@@ -38,22 +43,49 @@ function Main() {
     The reportList structure is updated to include the indvidual report's filenames and paths
     on the local file system.
 #>
-function DownloadReports( $reportList, $server, $userid, $password ) {
+function GetReportData( $reportName, $server, $userid, $password, $downloadPath ) {
     $server = $server
     $userid = $userid
     $password = $password
 
-    # TODO: Determine remote file names.
-    # TODO: Download the individual files.
-    # TODO: Determine local file names.
-    $reportList | ForEach-Object {
-        Write-Host "Downloading:" $_.name
+    # Remote file names are the report name, with the date appended in the format yyyyMMdd
+    $remoteName = GetRemoteFilename $downloadPath $reportName
 
-        # This is (probably) only temporary
-        $_.localFilename = [System.IO.Path]::Combine("data", $_.name + ".xml")
-    }
+    # Download to a temporary location.
+    $localFilename = [system.io.path]::GetTempFileName()
 
-    #cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
+    # Download the individual file.
+    # Becasuse psftp writes to standard out, it must be piped to Out-Null in order to prevent it being captured in the return data stream,
+    cmd /c echo get $remoteName $localFilename | psftp $userid@$server -pw $password -batch -bc | Out-Null
+
+    $loadedData = LoadDataFile $localFilename
+
+    # Cleanup
+    Remove-Item $localFilename
+
+    return $loadedData
+}
+
+<#
+    Computes the expected name of a report data file on the remote system by
+    appending the current date in a yyyyMMdd format.
+
+    @downloadPath - The path where the file is expected to be found.
+    @reportName - The report's root file name.
+#>
+function GetRemoteFilename( $downloadPath, $reportName ) {
+    $datePart = [System.DateTime]::Now.ToString("yyyyMMdd")
+    $filename = "$reportName-$datePart.xml"
+
+    # Make sure the download path has all the expected separators
+    if ( -not $downloadPath ) { $downloadPath = '/' }
+    if ( -not $downloadPath.StartsWith('/')) { $downloadPath = '/' + $downloadPath }
+    if ( -not $downloadPath.EndsWith('/')) { $downloadPath = $downloadPath + '/' }
+
+    # Combine name and path
+    $remoteName = $downloadPath + $filename
+
+    return $remoteName
 }
 
 
@@ -65,7 +97,6 @@ function SaveReports($reportList, $databaseInfo) {
 
     $reportList | ForEach-Object {
         Write-Host -foregroundcolor 'green' "Saving" $_.localFilename
-        $data = LoadDataFile $_.localFilename
 
         $xmlParam = new-object system.data.SqlClient.SqlParameter( "@xml", [system.data.SqlDbType]::Text )
         $xmlParam.value = $data

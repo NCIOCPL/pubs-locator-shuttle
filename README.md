@@ -16,7 +16,7 @@ Retrieves reports from the GPO FTP server and stores them in the publications lo
 | Report File Name   | Description |
 | ------------------ | ----------- |
 | InventoryReport    | Inventory of the number of each type of report available at GPO. |
-| FullFillmentReport | Order fulfillment status |
+| FullfillmentReport | Order fulfillment status |
 
 File names for download from the GPO SFTP server follow the format of
 
@@ -51,8 +51,10 @@ Both scripts use the same configuration dta, an XML file named settings.xml
         @userid - credentials for logging in to @server.
 
         @password - credentials for logging in to @server.
+
+        @downloadPath - path to download from. If not specified, / is assumed.
     -->
-    <ftp server="" userid="" password="" />
+    <ftp server="" userid="" password="" downloadPath="" />
 
     <!--
         Email server
