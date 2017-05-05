@@ -24,12 +24,12 @@ function Main() {
         $reportList | ForEach-Object {
 
             # Get the report
-            Write-Host "Downloading for" $_.name "report"
+            Write-Host -foregroundcolor 'green' "Downloading" $_.name "report"
             $data = GetReportData $_.remoteFilename $settings.ftp.server $settings.ftp.userid $settings.ftp.password $settings.ftp.downloadPath
 
-
-#            # Save reports to database.
-#            SaveReports $reportList $settings.ordersDatabase
+            # Save reports to database.
+            Write-Host -foregroundcolor 'green' "Saving report" $_.name
+            SaveReports $data $settings.ordersDatabase.connectionString $_.storageProcedure
         }
     }
     catch [System.Exception] {
@@ -92,21 +92,21 @@ function GetRemoteFilename( $downloadPath, $reportName ) {
 <#
     Loads report files identified in the localFilename element of each entry in $reportList
     and saves it in the database.
+
+    @reportXML - XML document containing the report
+    @connectionString - SQL Server connection string.
+    @procedureName - The name of the stored procedure to use for saving the report
+
 #>
-function SaveReports($reportList, $databaseInfo) {
+function SaveReports($reportXML, $connectionString, $procedureName) {
 
-    $reportList | ForEach-Object {
-        Write-Host -foregroundcolor 'green' "Saving" $_.localFilename
+    $xmlParam = new-object system.data.SqlClient.SqlParameter( "@xml", [system.data.SqlDbType]::Text )
+    $xmlParam.value = $reportXML
+    $paramList = ,$xmlParam
 
-        $xmlParam = new-object system.data.SqlClient.SqlParameter( "@xml", [system.data.SqlDbType]::Text )
-        $xmlParam.value = $data
-        $paramList = ,$xmlParam
-
-        # ExecuteNonQuery returns  the number of rows affected, or -1 if a stored proc sets nocount on.
-        # Neither of those is useful for this script, so we discard it.
-        ExecuteNonQuery $databaseInfo.connectionString $_.storageProcedure "StoredProcedure" $paramList | Out-Null
-    }
-
+    # ExecuteNonQuery returns  the number of rows affected, or -1 if a stored proc sets nocount on.
+    # Neither of those is useful for this script, so we discard it.
+    ExecuteNonQuery $connectionString $procedureName "StoredProcedure" $paramList | Out-Null
 }
 
 <#
