@@ -13,16 +13,16 @@ $reports = [xml]@"
 
 
 function Main() {
-    try {
+    $settings = GetSettings
 
-        $settings = GetSettings
+    # Contains an enumerable collection of report data structures.  This is more useful
+    # than the underlaying XML document structure.
+    $reportList = $reports.reports.report
 
-        # Contains an enumerable collection of report data structures.  This is more useful
-        # than the underlaying XML document structure.
-        $reportList = $reports.reports.report
+    $reportList | ForEach-Object {
 
-        $reportList | ForEach-Object {
-
+        $report = $_
+        try {
             # Get the report
             Write-Host -foregroundcolor 'green' "Downloading" $_.name "report"
             $data = GetReportData $_.remoteFilename $settings.ftp.server $settings.ftp.userid $settings.ftp.password $settings.ftp.downloadPath
@@ -31,9 +31,10 @@ function Main() {
             Write-Host -foregroundcolor 'green' "Saving report" $_.name
             SaveReports $data $settings.ordersDatabase.connectionString $_.storageProcedure
         }
-    }
-    catch [System.Exception] {
-        ReportError  "Downloading reports" $_ $settings
+        catch {
+            $message = "Unable to retrieve report" + $report.name
+            ReportError $message $_ $settings
+        }
     }
 }
 
@@ -58,7 +59,12 @@ function GetReportData( $reportName, $server, $userid, $password, $downloadPath 
     # Becasuse psftp writes to standard out, it must be piped to Out-Null in order to prevent it being captured in the return data stream,
     cmd /c echo get $remoteName $localFilename | psftp $userid@$server -pw $password -batch -bc | Out-Null
 
-    $loadedData = LoadDataFile $localFilename
+    try {
+        $loadedData = LoadDataFile $localFilename
+    }
+    catch {
+        throw "Unable to load $remoteName"
+    }
 
     # Cleanup
     Remove-Item $localFilename
@@ -177,10 +183,9 @@ function GetExportFileName( $testFile ) {
     @param $stage - String containing the name of the processing stage that failed.
     @param $ex - An ErrorRecord object containing details of the error which failed.
 #>
-function ReportError( $stage, $ex, $settings ) {
+function ReportError( $message, $ex, $settings ) {
 
-    $message = $ex.ToString()
-    $explanationMessage = "Error occured in the '$stage' stage.`n$ex`nError at line: " +
+    $explanationMessage = "$message.`n$ex`n`n`nError at line: " +
             $ex.InvocationInfo.ScriptLineNumber + "`n" +
             $ex.InvocationInfo.line
 
