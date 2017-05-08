@@ -110,18 +110,23 @@ function SaveReports($reportXML, $connectionString, $procedureName) {
     $xmlParam.value = $reportXML
     $paramList = ,$xmlParam
 
-    # ExecuteNonQuery returns  the number of rows affected, or -1 if a stored proc sets nocount on.
-    # Neither of those is useful for this script, so we discard it.
-    ExecuteNonQuery $connectionString $procedureName "StoredProcedure" $paramList | Out-Null
+    # ExecuteNonQuery returns  the number of rows affected, or -1 if a rollback event occurs.
+    # Assumptions:
+    #   Rollbacks will only happen when an error occurs.
+    #   Stored procs will *NOT* set "nocount on" as this also causes the row count to be -1.
+    $rowCount = ExecuteNonQuery $connectionString $procedureName "StoredProcedure" $paramList
+    if( $rowCount -lt 0 ) {
+        throw "An error occured while executing '$procedureName'."
+    }
 }
 
 <#
     Execute a SQL Query which doesn't return anything.
 #>
-function ExecuteNonQuery( $connectionString, $query, $commandType, $params ) {
+function ExecuteNonQuery( $connectionString, $commandText, $commandType, $params ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
-    $command = new-object system.data.sqlclient.sqlcommand("[$query]", $connection)
+    $command = new-object system.data.sqlclient.sqlcommand("[$commandText]", $connection)
     $command.CommandType = $commandType
 
     # Attach the paramters to the command object.

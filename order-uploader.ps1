@@ -1,5 +1,5 @@
 <#
-    Retrieves publication orders from the publications locator and uploads them to the  
+    Retrieves publication orders from the publications locator system and uploads them to the  
     Government Printing Office FTP server.
 #>
 
@@ -26,6 +26,18 @@ function Main() {
 }
 
 
+<#
+    Performs a single SFTP operation, uploading $exportFilename to the GPO SFTP server.
+
+    Notes:
+        1.  The Putty software package (in particular, psftp) must be installed
+        2.  The remote SFTP server's public key must have been accepted prior to
+            the first run.
+
+    @exportFilename - the file to be uploaded.
+
+    @settings - Object containing ftp login credentials
+#>
 function DoSftp( $exportFilename, $settings ) {
     $server = $settings.ftp.server
     $userid = $settings.ftp.userid
@@ -35,9 +47,18 @@ function DoSftp( $exportFilename, $settings ) {
 }
 
 
+<#
+    Retrieves a set of orders from the database.
+
+    @settings - The overall configuration object.
+#>
 function RetrieveOrderData($settings) {
-    # TODO Add parameter viewOnly, set to 0
-    return ExecuteScalarXml $settings.ordersDatabase.connectionString "dbo.GPO_orderXML_download"
+    # Set the @viewOnly paramter to 0 so the procedure clears the table afteward
+    $xmlParam = new-object system.data.SqlClient.SqlParameter( "@viewOnly", [system.data.SqlDbType]::Bit )
+    $xmlParam.value = 0
+    $paramList = ,$xmlParam
+
+    return ExecuteScalarXml $settings.ordersDatabase.connectionString "dbo.GPO_orderXML_download" "StoredProcedure" $paramList
 }
 
 
@@ -46,14 +67,28 @@ function RetrieveOrderData($settings) {
     Use this instead of ExecuteScalar as ExecuteScalar will truncate XML at 2,033 characters.
     See: https://support.microsoft.com/en-us/help/310378/
 
-    @param $connectionString - ADO.Net connection string for connecting to the database server.
-    e.g. A connectionString value using Windows authention might look something like
-         "Data Source=MY_SERVER\INSTANCE,PORT; Initial Catalog=MY_DATABASE; Integrated Security=true;"
+    @connectionString - ADO.Net connection string for connecting to the database server.
+            e.g. A connectionString value using Windows authention might look something like
+            "Data Source=MY_SERVER\INSTANCE,PORT; Initial Catalog=MY_DATABASE; Integrated Security=true;"
+
+    @commandText - The SQL Command to execute.
+
+    @commandType - String containing the name of the type of SQL Command being executed.
+                   May be any supported value of System.Data.CommandType
+
+    @paramList - Iterable collection of SQLParameter objects.
 #>
-function ExecuteScalarXml( $connectionString, $query ) {
+function ExecuteScalarXml( $connectionString, $commandText, $commandType, $paramList ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
-    $command = new-object system.data.sqlclient.sqlcommand($query,$connection)
+    $command = new-object system.data.sqlclient.sqlcommand($commandText, $connection)
+    $command.CommandType = $commandType
+
+    # Attach the paramters to the command object.
+    $paramList | ForEach-Object {
+        $command.Parameters.Add( $_ ) | Out-Null
+    }
+
     $connection.Open()
 
     # Powershell 2 doesn't have a using statement, so we do it by hand.
@@ -103,7 +138,9 @@ function GetExportFileName( $testFile ) {
 function ReportError( $stage, $ex, $settings ) {
 
     $message = $ex.ToString()
-    $explanationMessage = "Error occured in the '$stage' stage.`n$ex"
+    $explanationMessage = "Error occured in the '$stage' stage.`n$ex`n`n`nError at line: " +
+            $ex.InvocationInfo.ScriptLineNumber + "`n" +
+            $ex.InvocationInfo.line
 
     Write-Host -foregroundcolor 'red' $explanationMessage
 
