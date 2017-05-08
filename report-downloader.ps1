@@ -122,15 +122,26 @@ function SaveReports($reportXML, $connectionString, $procedureName) {
 
 <#
     Execute a SQL Query which doesn't return anything.
+
+    @connectionString - ADO.Net connection string for connecting to the database server.
+            e.g. A connectionString value using Windows authention might look something like
+            "Data Source=MY_SERVER\INSTANCE,PORT; Initial Catalog=MY_DATABASE; Integrated Security=true;"
+
+    @commandText - The SQL Command to execute.
+
+    @commandType - String containing the name of the type of SQL Command being executed.
+                   May be any supported value of System.Data.CommandType
+
+    @paramList - Iterable collection of SQLParameter objects.
 #>
-function ExecuteNonQuery( $connectionString, $commandText, $commandType, $params ) {
+function ExecuteNonQuery( $connectionString, $commandText, $commandType, $paramList ) {
 
     $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
     $command = new-object system.data.sqlclient.sqlcommand("[$commandText]", $connection)
     $command.CommandType = $commandType
 
     # Attach the paramters to the command object.
-    $params | ForEach-Object {
+    $paramList | ForEach-Object {
         $command.Parameters.Add( $_ ) | Out-Null
     }
 
