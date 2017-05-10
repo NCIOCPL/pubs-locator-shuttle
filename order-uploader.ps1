@@ -9,14 +9,14 @@ function Main() {
         $settings = GetSettings
         $orderData = RetrieveOrderData $settings
         $exportFilename = GetExportFileName $settings.testmode
-
+        $localFilename = CreateLocalFilename $exportFilename
         try {
-            $orderData | Out-File $exportFilename -Encoding UTF8
-            DoSftp $exportFilename $settings
+            $orderData | Out-File $localFilename -Encoding UTF8
+            DoSftp $exportFilename $localFilename $settings
         }
         finally {
             # Finally block to guarantee that clean up always takes place.
-            Remove-Item $exportFilename
+            Remove-Item $localFilename
         }
 
     }
@@ -34,18 +34,40 @@ function Main() {
         2.  The remote SFTP server's public key must have been accepted prior to
             the first run.
 
-    @exportFilename - the file to be uploaded.
+    @exportFilename - String containing the name of the file to be uploaded.
+
+    @localFilePath - String containing the file's fully-resolved name and path on the
+                     local system.
 
     @settings - Object containing ftp login credentials
 #>
-function DoSftp( $exportFilename, $settings ) {
+function DoSftp( $exportFilename, $localFilePath, $settings ) {
     $server = $settings.ftp.server
     $userid = $settings.ftp.userid
     $password = $settings.ftp.password
 
-    cmd /c echo put $exportFilename | psftp $userid@$server -pw $password -batch -bc
+    $remoteName = GetRemoteFilename $settings.ftp.uploadPath $exportFilename
+
+    cmd /c echo put $localFilePath $remoteName | psftp $userid@$server -pw $password -batch -bc
 }
 
+<#
+    Concatenate the path and name of the file on the remote system.
+
+    @uploadPath - String containing the path where the file is to be placed. If empty, / is assumed.
+
+    @filename - String containing the name of the file being uploaded.
+#>
+function GetRemoteFilename( $uploadPath, $filename ) {
+    # Make sure the download path has all the expected separators
+    if ( -not $uploadPath ) { $uploadPath = '/' }
+    if ( -not $uploadPath.StartsWith('/')) { $uploadPath = '/' + $uploadPath }
+    if ( -not $uploadPath.EndsWith('/')) { $uploadPath = $uploadPath + '/' }
+
+    # Combine name and path
+    $remoteName = $uploadPath + $filename
+    return $remoteName
+}
 
 <#
     Retrieves a set of orders from the database.
@@ -109,9 +131,7 @@ function ExecuteScalarXml( $connectionString, $commandText, $commandType, $param
 
 
 <#
-    Creates a timestamp-based filename with a fully-resolved path to the user's
-    temporary path.  For exact location rules, see the remarks in
-    https://msdn.microsoft.com/en-us/library/system.io.path.gettemppath(v=vs.110).aspx
+    Creates a timestamp-based filename.
 
     @param $testFile - If set to any value other than '0' or NULL, the filename will be prepended with the string "TEST-"
 #>
@@ -123,8 +143,21 @@ function GetExportFileName( $testFile ) {
         $formatter = "NCI-TEST-yyyyMMdd-HHmmss"
     }
 
-    $path = [System.IO.Path]::GetTempPath()
     $filename = [System.DateTime]::Now.ToString($formatter) + ".xml"
+    return $filename
+}
+
+
+<#
+    Prepends a filename with a fully-resolved path to the user's temporary directory.
+    For exact rules for determining the Temp directory's location, see the remarks in
+    https://msdn.microsoft.com/en-us/library/system.io.path.gettemppath(v=vs.110).aspx
+
+    @param $filename the filename to attach the path to.
+#>
+function CreateLocalFilename( $filename ) {
+
+    $path = [System.IO.Path]::GetTempPath()
     return [System.IO.Path]::Combine( $path,  $filename )
 }
 

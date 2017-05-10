@@ -52,9 +52,11 @@ Both scripts use the same configuration dta, an XML file named settings.xml
 
         @password - credentials for logging in to @server.
 
+        @uploadPath - path for uploading files to the remote server. If not specified, / is assumed.
+
         @downloadPath - path to download from. If not specified, / is assumed.
     -->
-    <ftp server="" userid="" password="" downloadPath="" />
+    <ftp server="" userid="" password="" uploadPath="" downloadPath="" />
 
     <!--
         Email server
